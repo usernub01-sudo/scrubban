@@ -49,14 +49,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
         MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
       );
     } on AuthException catch (e) {
-      // أخطاء Supabase Auth (بيانات غلط، إيميل غير مؤكد، إلخ)
       setState(() {
         _errorMessage = _translateAuthError(e.message);
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'حصل خطأ غير متوقع: $e';
+        _errorMessage = 'Unexpected error: $e';
         _loading = false;
       });
     }
@@ -65,10 +64,10 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   String _translateAuthError(String message) {
     final lower = message.toLowerCase();
     if (lower.contains('invalid login credentials')) {
-      return 'الإيميل أو كلمة السر غير صحيحة';
+      return 'Invalid email or password';
     }
     if (lower.contains('email not confirmed')) {
-      return 'الإيميل لم يتم تأكيده بعد';
+      return 'Email has not been confirmed';
     }
     return message;
   }
@@ -76,162 +75,239 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Icon(
-                        Icons.admin_panel_settings,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.primary,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Logo mark
+                    Center(
+                      child: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.lock_outline,
+                          size: 26,
+                          color: Colors.white,
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'لوحة تحكم الأدمن',
-                        textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Heading
+                    const Center(
+                      child: Text(
+                        'Admin Access',
                         style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black87,
+                          letterSpacing: -0.3,
+                          fontFamily: 'Georgia',
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'سجّل الدخول للمتابعة',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      const SizedBox(height: 28),
-
-                      TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        enabled: !_loading,
-                        decoration: const InputDecoration(
-                          labelText: 'الإيميل',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    const SizedBox(height: 8),
+                    const Center(
+                      child: Text(
+                        'Sign in to manage your store',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF999999),
                         ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'الرجاء إدخال الإيميل';
-                          }
-                          if (!v.contains('@')) {
-                            return 'صيغة الإيميل غير صحيحة';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 14),
+                    ),
+                    const SizedBox(height: 40),
 
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        obscureText: _obscurePassword,
-                        enabled: !_loading,
-                        onFieldSubmitted: (_) => _login(),
-                        decoration: InputDecoration(
-                          labelText: 'كلمة السر',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
+                    // Email
+                    TextFormField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      enabled: !_loading,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                      decoration: _inputDecoration('Email'),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!v.contains('@')) {
+                          return 'Invalid email format';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Password
+                    TextFormField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      enabled: !_loading,
+                      onFieldSubmitted: (_) => _login(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                      decoration: _inputDecoration(
+                        'Password',
+                        suffix: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            size: 18,
+                            color: const Color(0xFF999999),
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
                           ),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'الرجاء إدخال كلمة السر';
-                          }
-                          return null;
-                        },
                       ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
+                    ),
 
-                      if (_errorMessage != null) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.red.shade200),
+                    // Error
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.red.shade200,
+                            width: 1,
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red.shade700,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage!,
-                                  style: TextStyle(
-                                    color: Colors.red.shade700,
-                                    fontSize: 13,
-                                  ),
+                          color: Colors.red.shade50,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red.shade700,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontSize: 12.5,
+                                  height: 1.4,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  'تسجيل الدخول',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
+
+                    const SizedBox(height: 28),
+
+                    // Submit
+                    SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black87,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'SIGN IN',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    const Center(
+                      child: Text(
+                        'Authorized personnel only',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF999999),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, {Widget? suffix}) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(
+        fontSize: 13,
+        color: Color(0xFF666666),
+        fontWeight: FontWeight.w400,
+      ),
+      suffixIcon: suffix,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Color(0xFFDDDDDD), width: 1),
+      ),
+      enabledBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Color(0xFFDDDDDD), width: 1),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Colors.black87, width: 1.4),
+      ),
+      errorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Colors.red, width: 1),
+      ),
+      focusedErrorBorder: const OutlineInputBorder(
+        borderRadius: BorderRadius.zero,
+        borderSide: BorderSide(color: Colors.red, width: 1.4),
       ),
     );
   }

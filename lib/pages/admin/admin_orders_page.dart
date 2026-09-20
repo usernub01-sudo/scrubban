@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/order.dart';
 import '../../models/order_item.dart';
@@ -30,76 +31,174 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: FutureBuilder<List<Order>>(
         future: _ordersFuture,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'حصل خطأ:\n${snapshot.error}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            );
-          }
-
-          final orders = snapshot.data ?? [];
-
           return Column(
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: Colors.grey.shade100,
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'الطلبات',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'تحديث',
-                      icon: const Icon(Icons.refresh),
-                      onPressed: _loadOrders,
-                    ),
-                  ],
+              _buildToolbar(snapshot.data?.length),
+              const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+              Expanded(child: _buildBody(snapshot)),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // ============================================================
+  // Toolbar
+  // ============================================================
+  Widget _buildToolbar(int? count) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Orders',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black87,
+                  letterSpacing: -0.3,
+                  fontFamily: 'Georgia',
                 ),
               ),
-              Expanded(
-                child: orders.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'لا توجد طلبات بعد',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async => _loadOrders(),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: orders.length,
-                          itemBuilder: (context, index) {
-                            return _OrderCard(
-                              order: orders[index],
-                              orderService: _orderService,
-                              onStatusChanged: _loadOrders,
-                            );
-                          },
-                        ),
-                      ),
+              const SizedBox(height: 4),
+              Text(
+                count == null
+                    ? 'Loading...'
+                    : '$count ${count == 1 ? 'order' : 'orders'}',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF999999)),
               ),
             ],
+          ),
+          const Spacer(),
+          SizedBox(
+            height: 40,
+            child: OutlinedButton.icon(
+              onPressed: _loadOrders,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text(
+                'REFRESH',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.black87,
+                side: const BorderSide(color: Colors.black87, width: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // Body
+  // ============================================================
+  Widget _buildBody(AsyncSnapshot<List<Order>> snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.black87,
+          ),
+        ),
+      );
+    }
+
+    if (snapshot.hasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 44,
+                color: Color(0xFF999999),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Failed to load orders',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${snapshot.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF999999)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final orders = snapshot.data ?? [];
+    if (orders.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 56,
+              color: Color(0xFFCCCCCC),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No orders yet',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFF666666),
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Orders will appear here when customers place them.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF999999)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async => _loadOrders(),
+      color: Colors.black87,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          return _OrderRow(
+            order: orders[index],
+            orderService: _orderService,
+            onStatusChanged: _loadOrders,
           );
         },
       ),
@@ -107,22 +206,25 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   }
 }
 
-class _OrderCard extends StatefulWidget {
+// ============================================================
+// Order Row (expandable)
+// ============================================================
+class _OrderRow extends StatefulWidget {
   final Order order;
   final OrderService orderService;
   final VoidCallback onStatusChanged;
 
-  const _OrderCard({
+  const _OrderRow({
     required this.order,
     required this.orderService,
     required this.onStatusChanged,
   });
 
   @override
-  State<_OrderCard> createState() => _OrderCardState();
+  State<_OrderRow> createState() => _OrderRowState();
 }
 
-class _OrderCardState extends State<_OrderCard> {
+class _OrderRowState extends State<_OrderRow> {
   late Future<List<OrderItem>> _itemsFuture;
 
   @override
@@ -131,19 +233,18 @@ class _OrderCardState extends State<_OrderCard> {
     _itemsFuture = widget.orderService.fetchOrderItems(widget.order.id);
   }
 
-  /// ⚠️ لازم ترجّع MaterialColor عشان نقدر نستخدم .shade700
-  MaterialColor _statusColor(String status) {
+  Color _statusColor(String status) {
     switch (status) {
       case 'new':
-        return Colors.blue;
+        return Colors.blue.shade700;
       case 'confirmed':
-        return Colors.orange;
+        return Colors.orange.shade700;
       case 'delivered':
-        return Colors.green;
+        return Colors.green.shade700;
       case 'cancelled':
-        return Colors.red;
+        return Colors.red.shade700;
       default:
-        return Colors.grey;
+        return const Color(0xFF999999);
     }
   }
 
@@ -155,16 +256,90 @@ class _OrderCardState extends State<_OrderCard> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم تحديث حالة الطلب'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: Text(
+            'Order status updated to ${_statusLabel(newStatus)}',
+            style: const TextStyle(fontSize: 13, letterSpacing: 0.3),
+          ),
+          backgroundColor: Colors.black87,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
         ),
       );
       widget.onStatusChanged();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('فشل التحديث: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(
+            'Update failed: $e',
+            style: const TextStyle(fontSize: 13, letterSpacing: 0.3),
+          ),
+          backgroundColor: Colors.black87,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+      );
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'new':
+        return 'New';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'delivered':
+        return 'Delivered';
+      default:
+        return status;
+    }
+  }
+
+  // ============================================================
+  // ⭐ فتح واتساب
+  // ============================================================
+  Future<void> _openWhatsApp(BuildContext context, String phone) async {
+    // نظّف الرقم من أي رموز
+    var digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+
+    // لو مصري وبيبدأ بـ0 → نشيلها ونضيف كود مصر 20
+    if (digits.startsWith('0')) {
+      digits = '20${digits.substring(1)}';
+    }
+    // لو 10 أرقام وبيبدأ بـ1 (مصري بدون 0 أو 20) → نضيف 20
+    else if (digits.length == 10 && digits.startsWith('1')) {
+      digits = '20$digits';
+    }
+
+    final uri = Uri.parse('https://wa.me/$digits');
+
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open WhatsApp',
+              style: TextStyle(fontSize: 13),
+            ),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e', style: const TextStyle(fontSize: 13)),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
       );
     }
   }
@@ -174,19 +349,25 @@ class _OrderCardState extends State<_OrderCard> {
     final o = widget.order;
     final shortId = o.id.split('-').first.toUpperCase();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+          childrenPadding: const EdgeInsets.fromLTRB(0, 0, 0, 20),
           title: Row(
             children: [
               Expanded(
                 child: Text(
-                  '#$shortId — ${o.customerName}',
+                  '#$shortId',
                   style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),
@@ -194,106 +375,169 @@ class _OrderCardState extends State<_OrderCard> {
             ],
           ),
           subtitle: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${o.phone} • ${o.governorate} - ${o.city}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  o.customerName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: Colors.black87,
+                  ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
+                Text(
+                  '${o.phone} • ${o.governorate}, ${o.city}',
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF999999),
+                  ),
+                ),
+                const SizedBox(height: 3),
                 Text(
                   '${o.total.toStringAsFixed(2)} EGP • ${_formatDate(o.createdAt)}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    color: Color(0xFF999999),
+                  ),
                 ),
               ],
             ),
           ),
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Divider(),
-                  const Text(
-                    'عنوان التوصيل:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(o.address, style: const TextStyle(fontSize: 13)),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'المنتجات:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  FutureBuilder<List<OrderItem>>(
-                    future: _itemsFuture,
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting) {
-                        return const Padding(
-                          padding: EdgeInsets.all(8),
-                          child: Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      }
-                      if (snap.hasError) {
-                        return Text(
-                          'خطأ في تحميل البنود: ${snap.error}',
-                          style: const TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                          ),
-                        );
-                      }
-                      final items = snap.data ?? [];
-                      if (items.isEmpty) {
-                        return const Text('لا توجد بنود');
-                      }
-                      return Column(
-                        children: items
-                            .map((item) => _buildItemRow(item))
-                            .toList(),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'تغيير الحالة:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildStatusSelector(o),
-                ],
+            // Divider
+            const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
+            const SizedBox(height: 20),
+
+            // ⭐ زر الواتساب
+            _buildWhatsAppButton(o),
+
+            const SizedBox(height: 24),
+
+            // Delivery address
+            _buildSectionLabel('DELIVERY ADDRESS'),
+            const SizedBox(height: 8),
+            Text(
+              o.address,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF666666),
+                height: 1.5,
               ),
             ),
+
+            const SizedBox(height: 24),
+
+            // Items
+            _buildSectionLabel('ITEMS'),
+            const SizedBox(height: 8),
+            FutureBuilder<List<OrderItem>>(
+              future: _itemsFuture,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.black26,
+                      ),
+                    ),
+                  );
+                }
+                if (snap.hasError) {
+                  return Text(
+                    'Failed to load items: ${snap.error}',
+                    style: const TextStyle(fontSize: 12, color: Colors.red),
+                  );
+                }
+                final items = snap.data ?? [];
+                if (items.isEmpty) {
+                  return const Text(
+                    'No items',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF999999)),
+                  );
+                }
+                return Column(
+                  children: items.map((item) => _buildItemRow(item)).toList(),
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Status selector
+            _buildSectionLabel('UPDATE STATUS'),
+            const SizedBox(height: 12),
+            _buildStatusSelector(o),
           ],
         ),
       ),
     );
   }
 
+  // ============================================================
+  // WhatsApp Button
+  // ============================================================
+  Widget _buildWhatsAppButton(Order order) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: () => _openWhatsApp(context, order.phone),
+        icon: const Icon(Icons.chat_bubble_outline, size: 18),
+        label: Text(
+          'CHAT ON WHATSAPP · ${order.phone}',
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 1.2,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF25D366), // لون واتساب الرسمي
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 2.5,
+        color: Color(0xFF999999),
+      ),
+    );
+  }
+
   Widget _buildItemRow(OrderItem item) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
         children: [
           Expanded(
             child: Text(
               '${item.productName} × ${item.quantity}',
-              style: const TextStyle(fontSize: 13),
+              style: const TextStyle(fontSize: 13, color: Colors.black87),
             ),
           ),
           Text(
             '${(item.price * item.quantity).toStringAsFixed(2)} EGP',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
           ),
         ],
       ),
@@ -301,12 +545,12 @@ class _OrderCardState extends State<_OrderCard> {
   }
 
   Widget _buildStatusSelector(Order order) {
-    const statuses = ['new', 'confirmed', 'cancelled', 'delivered'];
+    const statuses = ['new', 'confirmed', 'delivered', 'cancelled'];
     const labels = {
-      'new': 'جديد',
-      'confirmed': 'مؤكد',
-      'cancelled': 'ملغي',
-      'delivered': 'تم التسليم',
+      'new': 'New',
+      'confirmed': 'Confirmed',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled',
     };
 
     return Wrap(
@@ -315,19 +559,30 @@ class _OrderCardState extends State<_OrderCard> {
       children: statuses.map((s) {
         final selected = order.status == s;
         final color = _statusColor(s);
-        return ChoiceChip(
-          label: Text(labels[s]!),
-          selected: selected,
-          onSelected: (_) {
+
+        return InkWell(
+          onTap: () {
             if (!selected) _changeStatus(s);
           },
-          selectedColor: color.withValues(alpha: 0.2),
-          labelStyle: TextStyle(
-            color: selected ? color.shade700 : Colors.grey.shade700,
-            fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected ? color.withValues(alpha: 0.08) : Colors.white,
+              border: Border.all(
+                color: selected ? color : const Color(0xFFDDDDDD),
+                width: selected ? 1.4 : 1,
+              ),
+            ),
+            child: Text(
+              labels[s]!.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+                color: selected ? color : const Color(0xFF666666),
+              ),
+            ),
           ),
-          side: BorderSide(color: selected ? color : Colors.grey.shade300),
         );
       }).toList(),
     );
@@ -335,24 +590,20 @@ class _OrderCardState extends State<_OrderCard> {
 
   Widget _statusBadge(String status) {
     final color = _statusColor(status);
-    final labels = {
-      'new': 'جديد',
-      'confirmed': 'مؤكد',
-      'cancelled': 'ملغي',
-      'delivered': 'تم التسليم',
-    };
+    final label = _statusLabel(status).toUpperCase();
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(
-        labels[status] ?? status,
+        label,
         style: TextStyle(
-          fontSize: 11,
-          color: color.shade700,
+          fontSize: 9.5,
+          color: color,
           fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
         ),
       ),
     );
