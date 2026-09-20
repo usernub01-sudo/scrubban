@@ -69,7 +69,12 @@ class _HomePageState extends State<HomePage> {
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
-                        _buildProductsHeader(products.length),
+                        SliverLayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.crossAxisExtent;
+                            return _buildProductsHeader(products.length, width);
+                          },
+                        ),
                         _buildProductsGrid(products),
                         const SliverToBoxAdapter(child: SizedBox(height: 40)),
                       ],
@@ -93,23 +98,6 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          // Logo (centered)
-          const Expanded(
-            child: Center(
-              child: Text(
-                'SCRUBBAN',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 3,
-                  color: Colors.black87,
-                ),
-              ),
-            ),
-          ),
-
-          // Search icon
-
           // Cart icon with badge
           Consumer<CartProvider>(
             builder: (context, cart, _) {
@@ -156,7 +144,23 @@ class _HomePageState extends State<HomePage> {
             },
           ),
 
-          const SizedBox(width: 4),
+          // Logo (centered)
+          const Expanded(
+            child: Center(
+              child: Text(
+                'SCRUBBAN',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 3,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+
+          // Empty spacer to keep logo centered
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -165,17 +169,24 @@ class _HomePageState extends State<HomePage> {
   // ============================================================
   // Products Header ("Products" + count)
   // ============================================================
-  Widget _buildProductsHeader(int count) {
+  Widget _buildProductsHeader(int count, double screenWidth) {
+    final sidePadding = _computeSidePadding(screenWidth);
+
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 40, 16, 24),
+        padding: EdgeInsets.fromLTRB(
+          sidePadding,
+          screenWidth < 500 ? 24 : 40,
+          sidePadding,
+          screenWidth < 500 ? 18 : 24,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            const Text(
+            Text(
               'Products',
               style: TextStyle(
-                fontSize: 32,
+                fontSize: screenWidth < 500 ? 26 : 32,
                 fontWeight: FontWeight.w400,
                 color: Colors.black87,
                 letterSpacing: -0.5,
@@ -194,33 +205,69 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ============================================================
+  // Compute side padding (max-width 1400 for the grid content)
+  // ============================================================
+  double _computeSidePadding(double screenWidth) {
+    const maxContentWidth = 1400.0;
+    if (screenWidth > maxContentWidth) {
+      return (screenWidth - maxContentWidth) / 2;
+    }
+    return screenWidth < 500 ? 12 : 16;
+  }
+
+  // ============================================================
+  // Compute number of columns based on width
+  // ============================================================
+  int _computeColumns(double width) {
+    if (width < 600) return 2; // phones
+    if (width < 900) return 3; // tablets
+    if (width < 1300) return 4; // laptops
+    return 5; // desktops
+  }
+
+  // ============================================================
   // Products Grid
   // ============================================================
   Widget _buildProductsGrid(List<Product> products) {
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 400,
-          childAspectRatio: 0.55,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 24,
-        ),
-        delegate: SliverChildBuilderDelegate((context, index) {
-          return _ProductTile(
-            product: products[index],
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      ProductDetailsPage(productId: products[index].id),
-                ),
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.crossAxisExtent;
+        final columns = _computeColumns(width);
+        final sidePadding = _computeSidePadding(width);
+
+        // On mobile, tighter spacing
+        final crossSpacing = width < 500 ? 10.0 : 14.0;
+        final mainSpacing = width < 500 ? 18.0 : 24.0;
+
+        // Taller cards on mobile (image takes more vertical space)
+        final aspectRatio = width < 500 ? 0.58 : 0.62;
+
+        return SliverPadding(
+          padding: EdgeInsets.symmetric(horizontal: sidePadding),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: crossSpacing,
+              mainAxisSpacing: mainSpacing,
+              childAspectRatio: aspectRatio,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              return _ProductTile(
+                product: products[index],
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ProductDetailsPage(productId: products[index].id),
+                    ),
+                  );
+                },
               );
-            },
-          );
-        }, childCount: products.length),
-      ),
+            }, childCount: products.length),
+          ),
+        );
+      },
     );
   }
 
@@ -252,8 +299,8 @@ class _HomePageState extends State<HomePage> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.black87,
                 side: const BorderSide(color: Colors.black87),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.zero,
                 ),
               ),
               child: const Text('Try again'),
@@ -303,6 +350,9 @@ class _ProductTileState extends State<_ProductTile> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    // Detect narrow card for smaller fonts
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 500;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
@@ -327,15 +377,15 @@ class _ProductTileState extends State<_ProductTile> {
               ),
             ),
 
-            const SizedBox(height: 12),
+            SizedBox(height: isSmall ? 10 : 12),
 
             // ---- Name ----
             Text(
               product.name,
-              maxLines: 1,
+              maxLines: isSmall ? 1 : 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 14.5,
+              style: TextStyle(
+                fontSize: isSmall ? 13 : 14.5,
                 fontWeight: FontWeight.w400,
                 color: Colors.black87,
                 letterSpacing: 0.1,
@@ -348,35 +398,39 @@ class _ProductTileState extends State<_ProductTile> {
             // ---- Price ----
             Text(
               '${product.price.toStringAsFixed(2)} EGP',
-              style: const TextStyle(
-                fontSize: 13.5,
+              style: TextStyle(
+                fontSize: isSmall ? 12 : 13.5,
                 fontWeight: FontWeight.w400,
                 color: Colors.black87,
                 letterSpacing: 0.1,
               ),
             ),
 
-            const SizedBox(height: 10),
+            SizedBox(height: isSmall ? 8 : 10),
 
             // ---- Button ----
             SizedBox(
               width: double.infinity,
-              height: 38,
+              height: isSmall ? 34 : 38,
               child: OutlinedButton(
                 onPressed: widget.onTap,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.black87,
                   backgroundColor: _hovering ? Colors.black87 : Colors.white,
                   side: const BorderSide(color: Colors.black87, width: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(0),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.zero,
                   ),
                   padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   'View product',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: isSmall ? 11.5 : 13,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 0.3,
                     color: _hovering ? Colors.white : Colors.black87,
