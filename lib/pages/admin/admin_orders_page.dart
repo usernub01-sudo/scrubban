@@ -299,18 +299,14 @@ class _OrderRowState extends State<_OrderRow> {
   }
 
   // ============================================================
-  // ⭐ فتح واتساب
+  // Open WhatsApp
   // ============================================================
   Future<void> _openWhatsApp(BuildContext context, String phone) async {
-    // نظّف الرقم من أي رموز
     var digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
 
-    // لو مصري وبيبدأ بـ0 → نشيلها ونضيف كود مصر 20
     if (digits.startsWith('0')) {
       digits = '20${digits.substring(1)}';
-    }
-    // لو 10 أرقام وبيبدأ بـ1 (مصري بدون 0 أو 20) → نضيف 20
-    else if (digits.length == 10 && digits.startsWith('1')) {
+    } else if (digits.length == 10 && digits.startsWith('1')) {
       digits = '20$digits';
     }
 
@@ -407,11 +403,10 @@ class _OrderRowState extends State<_OrderRow> {
             ),
           ),
           children: [
-            // Divider
             const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
             const SizedBox(height: 20),
 
-            // ⭐ زر الواتساب
+            // WhatsApp button
             _buildWhatsAppButton(o),
 
             const SizedBox(height: 24),
@@ -470,6 +465,13 @@ class _OrderRowState extends State<_OrderRow> {
 
             const SizedBox(height: 24),
 
+            // ⭐ Payment summary (subtotal, discount, shipping, total)
+            _buildSectionLabel('PAYMENT SUMMARY'),
+            const SizedBox(height: 10),
+            _buildPaymentSummary(o),
+
+            const SizedBox(height: 24),
+
             // Status selector
             _buildSectionLabel('UPDATE STATUS'),
             const SizedBox(height: 12),
@@ -477,6 +479,99 @@ class _OrderRowState extends State<_OrderRow> {
           ],
         ),
       ),
+    );
+  }
+
+  // ============================================================
+  // Payment Summary
+  // ============================================================
+  Widget _buildPaymentSummary(Order order) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFAFA),
+        border: Border.all(color: const Color(0xFFEEEEEE), width: 1),
+      ),
+      child: Column(
+        children: [
+          // Subtotal
+          _buildSummaryRow(
+            'Subtotal',
+            '${order.subtotal.toStringAsFixed(2)} EGP',
+          ),
+
+          // Discount (if any)
+          if (order.discountAmount > 0) ...[
+            const SizedBox(height: 10),
+            _buildSummaryRow(
+              order.couponCode != null && order.couponCode!.isNotEmpty
+                  ? 'Discount (${order.couponCode})'
+                  : 'Discount',
+              '- ${order.discountAmount.toStringAsFixed(2)} EGP',
+              valueColor: Colors.green.shade700,
+            ),
+          ],
+
+          const SizedBox(height: 10),
+          // Shipping
+          _buildSummaryRow(
+            'Shipping${order.governorate.isNotEmpty ? ' (${order.governorate})' : ''}',
+            '${order.shippingCost.toStringAsFixed(2)} EGP',
+          ),
+
+          const SizedBox(height: 14),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFDDDDDD)),
+          const SizedBox(height: 14),
+
+          // Total
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TOTAL',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.5,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                '${order.total.toStringAsFixed(2)} EGP',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 12.5, color: Color(0xFF666666)),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: valueColor ?? Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -499,7 +594,7 @@ class _OrderRowState extends State<_OrderRow> {
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF25D366), // لون واتساب الرسمي
+          backgroundColor: const Color(0xFF25D366),
           foregroundColor: Colors.white,
           elevation: 0,
           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import 'admin_coupons_page.dart';
 import 'admin_login_page.dart';
 import 'admin_orders_page.dart';
 import 'admin_products_page.dart';
+import 'admin_shipping_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -49,7 +51,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       child: Row(
         children: [
           const SizedBox(width: 8),
-          // Logo mark
           Container(
             width: 32,
             height: 32,
@@ -75,7 +76,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             ),
           ),
           const Spacer(),
-          // Account menu
           PopupMenuButton<String>(
             tooltip: 'Account',
             offset: const Offset(0, 48),
@@ -177,7 +177,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Widget _buildNarrowLayout() {
     return IndexedStack(
       index: _selectedIndex,
-      children: const [AdminProductsPage(), AdminOrdersPage()],
+      children: const [
+        AdminProductsPage(),
+        AdminOrdersPage(),
+        AdminCouponsPage(),
+        AdminShippingPage(), // ⭐ كان ناقص
+      ],
     );
   }
 
@@ -225,6 +230,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 activeIcon: Icons.receipt_long,
                 label: 'Orders',
               ),
+              _buildSidebarItem(
+                index: 2,
+                icon: Icons.confirmation_number_outlined,
+                activeIcon: Icons.confirmation_number,
+                label: 'Coupons',
+              ),
+              _buildSidebarItem(
+                index: 3,
+                icon: Icons.local_shipping_outlined,
+                activeIcon: Icons.local_shipping,
+                label: 'Shipping',
+              ),
               const Spacer(),
               Padding(
                 padding: const EdgeInsets.all(24),
@@ -263,7 +280,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         Expanded(
           child: IndexedStack(
             index: _selectedIndex,
-            children: const [AdminProductsPage(), AdminOrdersPage()],
+            children: const [
+              AdminProductsPage(),
+              AdminOrdersPage(),
+              AdminCouponsPage(),
+              AdminShippingPage(), // ⭐ كان ناقص
+            ],
           ),
         ),
       ],
@@ -285,7 +307,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       onTap: () => setState(() => _selectedIndex = index),
       child: Stack(
         children: [
-          // Active indicator
           if (selected)
             Positioned(
               left: 0,
@@ -345,6 +366,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               activeIcon: Icons.receipt_long,
               label: 'Orders',
             ),
+            _buildMobileNavItem(
+              index: 2,
+              icon: Icons.confirmation_number_outlined,
+              activeIcon: Icons.confirmation_number,
+              label: 'Coupons',
+            ),
+            _buildMobileNavItem(
+              index: 3,
+              icon: Icons.local_shipping_outlined,
+              activeIcon: Icons.local_shipping,
+              label: 'Shipping',
+            ),
           ],
         ),
       ),
@@ -376,7 +409,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11.5,
+                  fontSize: 10.5,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   color: selected ? Colors.black87 : const Color(0xFF999999),
                   letterSpacing: 0.3,

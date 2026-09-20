@@ -5,7 +5,7 @@ import '../models/order_item.dart';
 class OrderService {
   final SupabaseClient _client = Supabase.instance.client;
 
-  /// ينشئ طلب جديد مع بنوده في transaction واحد (عبر RPC).
+  /// ينشئ طلب جديد مع بنوده (عبر RPC).
   /// يرجّع الـorder_id الجديد.
   Future<String> createOrder({
     required String customerName,
@@ -13,8 +13,8 @@ class OrderService {
     required String governorate,
     required String city,
     required String address,
-    required double total,
     required List<OrderItem> items,
+    String? couponCode,
   }) async {
     final result = await _client.rpc(
       'create_order_with_items',
@@ -24,8 +24,8 @@ class OrderService {
         'p_governorate': governorate,
         'p_city': city,
         'p_address': address,
-        'p_total': total,
         'p_items': items.map((e) => e.toRpcJson()).toList(),
+        'p_coupon_code': couponCode,
       },
     );
 
